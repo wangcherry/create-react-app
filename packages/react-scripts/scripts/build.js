@@ -69,7 +69,7 @@ checkBrowsers(paths.appPath, isInteractive)
   .then(() => {
     // First, read the current file sizes in build directory.
     // This lets us display how much they changed later.
-    return measureFileSizesBeforeBuild(paths.appBuild);
+    return measureFileSizesBeforeBuild(paths.buildClient);
   })
   .then(previousFileSizes => {
     // Remove all content but keep the directory so that
@@ -97,13 +97,14 @@ checkBrowsers(paths.appPath, isInteractive)
         );
       } else {
         console.log(chalk.green('Compiled successfully.\n'));
+        copyFolder();
       }
 
       console.log('File sizes after gzip:\n');
       printFileSizesAfterBuild(
         stats,
         previousFileSizes,
-        paths.appBuild,
+        paths.buildClient,
         WARN_AFTER_BUNDLE_GZIP_SIZE,
         WARN_AFTER_CHUNK_GZIP_SIZE
       );
@@ -200,8 +201,46 @@ function build(previousFileSizes) {
 }
 
 function copyPublicFolder() {
-  fs.copySync(paths.appPublic, paths.appBuild, {
-    dereference: true,
-    filter: file => file !== paths.appHtml,
-  });
+  // fs.copySync(paths.appPublic, paths.appBuild, {
+  //   dereference: true,
+  //   filter: file => file !== paths.appHtml,
+  // });
+}
+function copyFolder() {
+  if (fs.existsSync(path.join(paths.buildClient, 'js'))) {
+    fs.copySync(
+      path.join(paths.buildClient, 'js'),
+      path.join(paths.buildStatics, 'js')
+    );
+  }
+  if (fs.existsSync(path.join(paths.buildClient, 'css'))) {
+    fs.copySync(
+      path.join(paths.buildClient, 'css'),
+      path.join(paths.buildStatics, 'css')
+    );
+  }
+  if (fs.existsSync(path.join(paths.buildClient, 'img'))) {
+    fs.copySync(
+      path.join(paths.buildClient, 'img'),
+      path.join(paths.buildStatics, 'img')
+    );
+  }
+  if (fs.existsSync(path.join(paths.appPublic, 'favicon.ico'))) {
+    fs.copySync(
+      path.join(paths.appPublic, 'favicon.ico'),
+      path.join(paths.buildWebapp, 'favicon.ico')
+    );
+  }
+  if (fs.existsSync(path.join(paths.appPublic, 'manifest.json'))) {
+    fs.copySync(
+      path.join(paths.appPublic, 'manifest.json'),
+      path.join(paths.buildWebapp, 'manifest.json')
+    );
+  }
+  if (fs.existsSync(path.join(paths.buildClient, 'index.html'))) {
+    fs.copySync(
+      path.join(paths.buildClient, 'index.html'),
+      path.join(paths.buildWebapp, 'index.html')
+    );
+  }
 }

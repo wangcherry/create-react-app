@@ -1,6 +1,6 @@
 {
-  "name": "react-scripts",
-  "version": "3.0.1",
+  "name": "@shark/react-scripts",
+  "version": "0.0.1",
   "description": "Configuration and scripts for Create React App.",
   "repository": {
     "type": "git",
@@ -19,6 +19,7 @@
     "config",
     "lib",
     "scripts",
+    "react-template",
     "template",
     "template-typescript",
     "utils"
@@ -82,8 +83,11 @@
     "workbox-webpack-plugin": "4.2.0"
   },
   "devDependencies": {
+    "antd": "^3.19.5",
+    "node-sass": "^4.12.0",
     "react": "^16.8.4",
-    "react-dom": "^16.8.4"
+    "react-dom": "^16.8.4",
+    "typescript": "^3.5.2"
   },
   "optionalDependencies": {
     "fsevents": "2.0.6"
