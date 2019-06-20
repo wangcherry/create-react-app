@@ -143,7 +143,8 @@ checkBrowsers(paths.appPath, isInteractive)
       }
 
       console.log(chalk.cyan('Starting the development server...\n'));
-      openBrowser(urls.localUrlForBrowser);
+      const contextPath = require(paths.appConfJs).contextPath.replace('/', '');
+      openBrowser(urls.localUrlForBrowser + contextPath + '/index.html');
     });
 
     ['SIGINT', 'SIGTERM'].forEach(function(sig) {
