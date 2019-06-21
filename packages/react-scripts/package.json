@@ -25,6 +25,7 @@
     "utils"
   ],
   "bin": {
+    "@shark/react-scripts": "./bin/create-react-app.js",
     "react-scripts": "./bin/react-scripts.js"
   },
   "types": "./lib/react-app.d.ts",

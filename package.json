@@ -4,9 +4,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "cd packages/react-scripts && node bin/react-scripts.js build --tager dev",
-    "build:test": "cd packages/react-scripts && node bin/react-scripts.js build --tager test",
-    "build:online": "cd packages/react-scripts && node bin/react-scripts.js build --tager online",
+    "build": "cd packages/react-scripts && node bin/react-scripts.js build --target dev",
+    "build:test": "cd packages/react-scripts && node bin/react-scripts.js build --target test",
+    "build:online": "cd packages/react-scripts && node bin/react-scripts.js build --target online",
     "changelog": "lerna-changelog",
     "create-react-app": "node tasks/cra.js",
     "e2e": "tasks/e2e-simple.sh",

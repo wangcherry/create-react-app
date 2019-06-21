@@ -15,6 +15,7 @@ process.on('unhandledRejection', err => {
   throw err;
 });
 
+const chalk = require('chalk');
 const paths = require('../config/paths');
 const spawn = require('react-dev-utils/crossSpawn');
 const args = process.argv.slice(2);
@@ -25,12 +26,20 @@ const scriptIndex = args.findIndex(
 const script = scriptIndex === -1 ? args[0] : args[scriptIndex];
 const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 
+const argv = require('yargs').argv;
 if (script === 'build') {
-  const targetIndex = args.findIndex(
-    x => x === 'test' || x === 'online' || x === 'dev'
-  );
-  const target = targetIndex === -1 ? args[0] : args[targetIndex];
-  process.env.PUBLIC_URL = require(paths.appConfJs).mimgURLPrefix[target] || '';
+  const target = argv.target;
+  if (target === 'test' || target === 'online' || target === 'dev') {
+    process.env.PUBLIC_URL =
+      require(paths.appConfJs).mimgURLPrefix[target] || '';
+  } else {
+    console.log(
+      chalk.yellow(
+        '\nWARNING: Please set the target in order to add a resource prefix.\n' +
+          'eg: react-scripts build --target test\n'
+      )
+    );
+  }
 }
 
 switch (script) {
