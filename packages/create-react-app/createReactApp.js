@@ -36,19 +36,13 @@
 
 const chalk = require('chalk');
 const commander = require('commander');
-const dns = require('dns');
 const envinfo = require('envinfo');
 const execSync = require('child_process').execSync;
 const fs = require('fs-extra');
-const hyperquest = require('hyperquest');
 const inquirer = require('inquirer');
-const os = require('os');
 const path = require('path');
 const semver = require('semver');
 const spawn = require('cross-spawn');
-const tmp = require('tmp');
-const unpack = require('tar-pack').unpack;
-const url = require('url');
 const validateProjectName = require('validate-npm-package-name');
 
 const packageJson = require('./package.json');
@@ -61,15 +55,25 @@ const errorLogFilePatterns = [
   'yarn-debug.log',
 ];
 
+// template type
+const templateTypeMap = {
+  full: 'git@git.yx.netease.com:shark/react-template-full.git',
+  web: 'git@git.yx.netease.com:shark/react-tempalte.git',
+  npm: 'git@git.yx.netease.com:shark/react-template-npm.git',
+};
+let templateType;
+let templateGit;
+
 let projectName;
 
 const program = new commander.Command(packageJson.name)
   .version(packageJson.version)
   .arguments('<project-directory>')
-  .usage(`${chalk.green('<project-directory>')} [options]`)
+  .usage(`${chalk.green('<project-directory>')} [options] [value ...]`)
   .action(name => {
     projectName = name;
   })
+  .option('--type <type>', 'set template type', 'full')
   .option('--verbose', 'print additional logs')
   .option('--info', 'print environment debug info')
   .option(
@@ -78,10 +82,18 @@ const program = new commander.Command(packageJson.name)
   )
   .option('--use-npm')
   .option('--use-pnp')
-  .option('--typescript')
   .allowUnknownOption()
   .on('--help', () => {
     console.log(`    Only ${chalk.green('<project-directory>')} is required.`);
+    console.log();
+    console.log(`    A template type ${chalk.cyan('--type')} can be set:`);
+    console.log(
+      `      - ${chalk.green('full')}: Default template, include server & web`
+    );
+    console.log(`      - ${chalk.green('web')}: only web template`);
+    console.log(
+      `      - ${chalk.green('npm')}: include server & web for package`
+    );
     console.log();
     console.log(
       `    A custom ${chalk.cyan('--scripts-version')} can be one of:`
@@ -132,8 +144,8 @@ if (program.info) {
         System: ['OS', 'CPU'],
         Binaries: ['Node', 'npm', 'Yarn'],
         Browsers: ['Chrome', 'Edge', 'Internet Explorer', 'Firefox', 'Safari'],
-        npmPackages: ['react', 'react-dom', 'react-scripts'],
-        npmGlobalPackages: ['create-react-app'],
+        npmPackages: ['react', 'react-dom', '@shark/react-scripts'],
+        npmGlobalPackages: ['@shark/create-react-app'],
       },
       {
         duplicates: true,
@@ -158,6 +170,47 @@ if (typeof projectName === 'undefined') {
   process.exit(1);
 }
 
+if (program.type) {
+  if (
+    program.type === 'full' ||
+    program.type === 'web' ||
+    program.type === 'npm'
+  ) {
+    templateType = program.type;
+    templateGit = templateTypeMap[templateType];
+    console.log('Will create a template project');
+  } else {
+    console.error('Please set the correct template type (full | web | npm) : ');
+    console.log(
+      `  ${chalk.cyan(program.name())} ${chalk.green(
+        '<project-directory>'
+      )} ${chalk.green('[options]')}`
+    );
+    console.log();
+    console.log('For example:');
+    console.log(
+      `  ${chalk.cyan(program.name())} 'my-react-app' ${chalk.green(
+        '--type=full'
+      )}`
+    );
+    console.log();
+    console.log(
+      `Run ${chalk.cyan(`${program.name()} --help`)} to see all options.`
+    );
+    process.exit(1);
+  }
+} else {
+  templateType = 'full';
+  templateGit = templateTypeMap[templateType];
+  console.log('Will create a default template project inculde server & web');
+  console.log('Equal:');
+  console.log(
+    `  ${chalk.cyan(program.name())} ${chalk.green(
+      '<project-directory>'
+    )} --type=${templateType}`
+  );
+}
+
 function printValidationResults(results) {
   if (typeof results !== 'undefined') {
     results.forEach(error => {
@@ -166,33 +219,15 @@ function printValidationResults(results) {
   }
 }
 
-const hiddenProgram = new commander.Command()
-  .option(
-    '--internal-testing-template <path-to-template>',
-    '(internal usage only, DO NOT RELY ON THIS) ' +
-      'use a non-standard application template'
-  )
-  .parse(process.argv);
-
 createApp(
   projectName,
   program.verbose,
   program.scriptsVersion,
   program.useNpm,
-  program.usePnp,
-  program.typescript,
-  hiddenProgram.internalTestingTemplate
+  program.usePnp
 );
 
-function createApp(
-  name,
-  verbose,
-  version,
-  useNpm,
-  usePnp,
-  useTypescript,
-  template
-) {
+function createApp(name, verbose, version, useNpm, usePnp) {
   const root = path.resolve(name);
   const appName = path.basename(root);
 
@@ -205,18 +240,9 @@ function createApp(
   console.log(`Creating a new React app in ${chalk.green(root)}.`);
   console.log();
 
-  const packageJson = {
-    name: appName,
-    version: '0.1.0',
-    private: true,
-  };
-  fs.writeFileSync(
-    path.join(root, 'package.json'),
-    JSON.stringify(packageJson, null, 2) + os.EOL
-  );
+  execSync(`git clone ${templateGit} ${name}`);
 
   const useYarn = useNpm ? false : shouldUseYarn();
-  const originalDirectory = process.cwd();
   process.chdir(root);
   if (!useYarn && !checkThatNpmCanReadCwd()) {
     process.exit(1);
@@ -231,8 +257,7 @@ function createApp(
           `Please update to Node 8.10 or higher for a better, fully supported experience.\n`
       )
     );
-    // Fall back to latest supported react-scripts on Node 4
-    version = 'react-scripts@0.9.x';
+    process.exit(1);
   }
 
   if (!useYarn) {
@@ -248,8 +273,7 @@ function createApp(
           )
         );
       }
-      // Fall back to latest supported react-scripts for npm 3
-      version = 'react-scripts@0.9.x';
+      process.exit(1);
     }
   } else if (usePnp) {
     const yarnInfo = checkYarnVersion();
@@ -280,24 +304,16 @@ function createApp(
       // ignore
     }
     if (yarnUsesDefaultRegistry) {
-      fs.copySync(
-        require.resolve('./yarn.lock.cached'),
-        path.join(root, 'yarn.lock')
-      );
+      // fs.copySync(
+      //   require.resolve('./yarn.lock.cached'),
+      //   path.join(root, 'yarn.lock')
+      // );
     }
   }
 
-  run(
-    root,
-    appName,
-    version,
-    verbose,
-    originalDirectory,
-    template,
-    useYarn,
-    usePnp,
-    useTypescript
-  );
+  execSync(`rm -rf .git`);
+  setConfig(root);
+  install(useYarn);
 }
 
 function shouldUseYarn() {
@@ -307,338 +323,6 @@ function shouldUseYarn() {
   } catch (e) {
     return false;
   }
-}
-
-function install(root, useYarn, usePnp, dependencies, verbose, isOnline) {
-  return new Promise((resolve, reject) => {
-    let command;
-    let args;
-    if (useYarn) {
-      command = 'yarnpkg';
-      args = ['add', '--exact'];
-      if (!isOnline) {
-        args.push('--offline');
-      }
-      if (usePnp) {
-        args.push('--enable-pnp');
-      }
-      [].push.apply(args, dependencies);
-
-      // Explicitly set cwd() to work around issues like
-      // https://github.com/facebook/create-react-app/issues/3326.
-      // Unfortunately we can only do this for Yarn because npm support for
-      // equivalent --prefix flag doesn't help with this issue.
-      // This is why for npm, we run checkThatNpmCanReadCwd() early instead.
-      args.push('--cwd');
-      args.push(root);
-
-      if (!isOnline) {
-        console.log(chalk.yellow('You appear to be offline.'));
-        console.log(chalk.yellow('Falling back to the local Yarn cache.'));
-        console.log();
-      }
-    } else {
-      command = 'npm';
-      args = [
-        'install',
-        '--save',
-        '--save-exact',
-        '--loglevel',
-        'error',
-      ].concat(dependencies);
-
-      if (usePnp) {
-        console.log(chalk.yellow("NPM doesn't support PnP."));
-        console.log(chalk.yellow('Falling back to the regular installs.'));
-        console.log();
-      }
-    }
-
-    if (verbose) {
-      args.push('--verbose');
-    }
-
-    const child = spawn(command, args, { stdio: 'inherit' });
-    child.on('close', code => {
-      if (code !== 0) {
-        reject({
-          command: `${command} ${args.join(' ')}`,
-        });
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-function run(
-  root,
-  appName,
-  version,
-  verbose,
-  originalDirectory,
-  template,
-  useYarn,
-  usePnp,
-  useTypescript
-) {
-  getInstallPackage(version, originalDirectory).then(packageToInstall => {
-    const allDependencies = ['react', 'react-dom', packageToInstall];
-    if (useTypescript) {
-      allDependencies.push(
-        // TODO: get user's node version instead of installing latest
-        '@types/node',
-        '@types/react',
-        '@types/react-dom',
-        // TODO: get version of Jest being used instead of installing latest
-        '@types/jest',
-        'typescript'
-      );
-    }
-
-    console.log('Installing packages. This might take a couple of minutes.');
-    getPackageName(packageToInstall)
-      .then(packageName =>
-        checkIfOnline(useYarn).then(isOnline => ({
-          isOnline: isOnline,
-          packageName: packageName,
-        }))
-      )
-      .then(info => {
-        const isOnline = info.isOnline;
-        const packageName = info.packageName;
-        console.log(
-          `Installing ${chalk.cyan('react')}, ${chalk.cyan(
-            'react-dom'
-          )}, and ${chalk.cyan(packageName)}...`
-        );
-        console.log();
-
-        return install(
-          root,
-          useYarn,
-          usePnp,
-          allDependencies,
-          verbose,
-          isOnline
-        ).then(() => packageName);
-      })
-      .then(async packageName => {
-        checkNodeVersion(packageName);
-        setCaretRangeForRuntimeDeps(packageName);
-
-        const pnpPath = path.resolve(process.cwd(), '.pnp.js');
-
-        const nodeArgs = fs.existsSync(pnpPath) ? ['--require', pnpPath] : [];
-
-        await executeNodeScript(
-          {
-            cwd: process.cwd(),
-            args: nodeArgs,
-          },
-          [root, appName, verbose, originalDirectory, template],
-          `
-        var init = require('${packageName}/scripts/init.js');
-        init.apply(null, JSON.parse(process.argv[1]));
-      `
-        );
-
-        if (version === 'react-scripts@0.9.x') {
-          console.log(
-            chalk.yellow(
-              `\nNote: the project was bootstrapped with an old unsupported version of tools.\n` +
-                `Please update to Node >=8.10 and npm >=5 to get supported tools in new projects.\n`
-            )
-          );
-        }
-      })
-      .catch(reason => {
-        console.log();
-        console.log('Aborting installation.');
-        if (reason.command) {
-          console.log(`  ${chalk.cyan(reason.command)} has failed.`);
-        } else {
-          console.log(
-            chalk.red('Unexpected error. Please report it as a bug:')
-          );
-          console.log(reason);
-        }
-        console.log();
-
-        // On 'exit' we will delete these files from target directory.
-        const knownGeneratedFiles = [
-          'package.json',
-          'yarn.lock',
-          'node_modules',
-        ];
-        const currentFiles = fs.readdirSync(path.join(root));
-        currentFiles.forEach(file => {
-          knownGeneratedFiles.forEach(fileToMatch => {
-            // This removes all knownGeneratedFiles.
-            if (file === fileToMatch) {
-              console.log(`Deleting generated file... ${chalk.cyan(file)}`);
-              fs.removeSync(path.join(root, file));
-            }
-          });
-        });
-        const remainingFiles = fs.readdirSync(path.join(root));
-        if (!remainingFiles.length) {
-          // Delete target folder if empty
-          console.log(
-            `Deleting ${chalk.cyan(`${appName}/`)} from ${chalk.cyan(
-              path.resolve(root, '..')
-            )}`
-          );
-          process.chdir(path.resolve(root, '..'));
-          fs.removeSync(path.join(root));
-        }
-        console.log('Done.');
-        process.exit(1);
-      });
-  });
-}
-
-function getInstallPackage(version, originalDirectory) {
-  let packageToInstall = 'react-scripts';
-  const validSemver = semver.valid(version);
-  if (validSemver) {
-    packageToInstall += `@${validSemver}`;
-  } else if (version) {
-    if (version[0] === '@' && version.indexOf('/') === -1) {
-      packageToInstall += version;
-    } else if (version.match(/^file:/)) {
-      packageToInstall = `file:${path.resolve(
-        originalDirectory,
-        version.match(/^file:(.*)?$/)[1]
-      )}`;
-    } else {
-      // for tar.gz or alternative paths
-      packageToInstall = version;
-    }
-  }
-
-  const scriptsToWarn = [
-    {
-      name: 'react-scripts-ts',
-      message: chalk.yellow(
-        'The react-scripts-ts package is deprecated. TypeScript is now supported natively in Create React App. You can use the --typescript option instead when generating your app to include TypeScript support. Would you like to continue using react-scripts-ts?'
-      ),
-    },
-  ];
-
-  for (const script of scriptsToWarn) {
-    if (packageToInstall.startsWith(script.name)) {
-      return inquirer
-        .prompt({
-          type: 'confirm',
-          name: 'useScript',
-          message: script.message,
-          default: false,
-        })
-        .then(answer => {
-          if (!answer.useScript) {
-            process.exit(0);
-          }
-
-          return packageToInstall;
-        });
-    }
-  }
-
-  return Promise.resolve(packageToInstall);
-}
-
-function getTemporaryDirectory() {
-  return new Promise((resolve, reject) => {
-    // Unsafe cleanup lets us recursively delete the directory if it contains
-    // contents; by default it only allows removal if it's empty
-    tmp.dir({ unsafeCleanup: true }, (err, tmpdir, callback) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({
-          tmpdir: tmpdir,
-          cleanup: () => {
-            try {
-              callback();
-            } catch (ignored) {
-              // Callback might throw and fail, since it's a temp directory the
-              // OS will clean it up eventually...
-            }
-          },
-        });
-      }
-    });
-  });
-}
-
-function extractStream(stream, dest) {
-  return new Promise((resolve, reject) => {
-    stream.pipe(
-      unpack(dest, err => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(dest);
-        }
-      })
-    );
-  });
-}
-
-// Extract package name from tarball url or path.
-function getPackageName(installPackage) {
-  if (installPackage.match(/^.+\.(tgz|tar\.gz)$/)) {
-    return getTemporaryDirectory()
-      .then(obj => {
-        let stream;
-        if (/^http/.test(installPackage)) {
-          stream = hyperquest(installPackage);
-        } else {
-          stream = fs.createReadStream(installPackage);
-        }
-        return extractStream(stream, obj.tmpdir).then(() => obj);
-      })
-      .then(obj => {
-        const packageName = require(path.join(obj.tmpdir, 'package.json')).name;
-        obj.cleanup();
-        return packageName;
-      })
-      .catch(err => {
-        // The package name could be with or without semver version, e.g. react-scripts-0.2.0-alpha.1.tgz
-        // However, this function returns package name only without semver version.
-        console.log(
-          `Could not extract the package name from the archive: ${err.message}`
-        );
-        const assumedProjectName = installPackage.match(
-          /^.+\/(.+?)(?:-\d+.+)?\.(tgz|tar\.gz)$/
-        )[1];
-        console.log(
-          `Based on the filename, assuming it is "${chalk.cyan(
-            assumedProjectName
-          )}"`
-        );
-        return Promise.resolve(assumedProjectName);
-      });
-  } else if (installPackage.indexOf('git+') === 0) {
-    // Pull package name out of git urls e.g:
-    // git+https://github.com/mycompany/react-scripts.git
-    // git+ssh://github.com/mycompany/react-scripts.git#v1.2.3
-    return Promise.resolve(installPackage.match(/([^/]+)\.git(#.*)?$/)[1]);
-  } else if (installPackage.match(/.+@/)) {
-    // Do not match @scope/ when stripping off @version or @tag
-    return Promise.resolve(
-      installPackage.charAt(0) + installPackage.substr(1).split('@')[0]
-    );
-  } else if (installPackage.match(/^file:/)) {
-    const installPackagePath = installPackage.match(/^file:(.*)?$/)[1];
-    const installPackageJson = require(path.join(
-      installPackagePath,
-      'package.json'
-    ));
-    return Promise.resolve(installPackageJson.name);
-  }
-  return Promise.resolve(installPackage);
 }
 
 function checkNpmVersion() {
@@ -679,37 +363,6 @@ function checkYarnVersion() {
   };
 }
 
-function checkNodeVersion(packageName) {
-  const packageJsonPath = path.resolve(
-    process.cwd(),
-    'node_modules',
-    packageName,
-    'package.json'
-  );
-
-  if (!fs.existsSync(packageJsonPath)) {
-    return;
-  }
-
-  const packageJson = require(packageJsonPath);
-  if (!packageJson.engines || !packageJson.engines.node) {
-    return;
-  }
-
-  if (!semver.satisfies(process.version, packageJson.engines.node)) {
-    console.error(
-      chalk.red(
-        'You are running Node %s.\n' +
-          'Create React App requires Node %s or higher. \n' +
-          'Please update your version of Node.'
-      ),
-      process.version,
-      packageJson.engines.node
-    );
-    process.exit(1);
-  }
-}
-
 function checkAppName(appName) {
   const validationResult = validateProjectName(appName);
   if (!validationResult.validForNewPackages) {
@@ -738,49 +391,6 @@ function checkAppName(appName) {
     );
     process.exit(1);
   }
-}
-
-function makeCaretRange(dependencies, name) {
-  const version = dependencies[name];
-
-  if (typeof version === 'undefined') {
-    console.error(chalk.red(`Missing ${name} dependency in package.json`));
-    process.exit(1);
-  }
-
-  let patchedVersion = `^${version}`;
-
-  if (!semver.validRange(patchedVersion)) {
-    console.error(
-      `Unable to patch ${name} dependency version because version ${chalk.red(
-        version
-      )} will become invalid ${chalk.red(patchedVersion)}`
-    );
-    patchedVersion = version;
-  }
-
-  dependencies[name] = patchedVersion;
-}
-
-function setCaretRangeForRuntimeDeps(packageName) {
-  const packagePath = path.join(process.cwd(), 'package.json');
-  const packageJson = require(packagePath);
-
-  if (typeof packageJson.dependencies === 'undefined') {
-    console.error(chalk.red('Missing dependencies in package.json'));
-    process.exit(1);
-  }
-
-  const packageVersion = packageJson.dependencies[packageName];
-  if (typeof packageVersion === 'undefined') {
-    console.error(chalk.red(`Unable to find ${packageName} in package.json`));
-    process.exit(1);
-  }
-
-  makeCaretRange(packageJson.dependencies, 'react');
-  makeCaretRange(packageJson.dependencies, 'react-dom');
-
-  fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + os.EOL);
 }
 
 // If project only contains files generated by GH, it’s safe.
@@ -848,21 +458,6 @@ function isSafeToCreateProjectIn(root, name) {
   return true;
 }
 
-function getProxy() {
-  if (process.env.https_proxy) {
-    return process.env.https_proxy;
-  } else {
-    try {
-      // Trying to read https-proxy from .npmrc
-      let httpsProxy = execSync('npm config get https-proxy')
-        .toString()
-        .trim();
-      return httpsProxy !== 'null' ? httpsProxy : undefined;
-    } catch (e) {
-      return;
-    }
-  }
-}
 function checkThatNpmCanReadCwd() {
   const cwd = process.cwd();
   let childOutput = null;
@@ -924,45 +519,86 @@ function checkThatNpmCanReadCwd() {
   return false;
 }
 
-function checkIfOnline(useYarn) {
-  if (!useYarn) {
-    // Don't ping the Yarn registry.
-    // We'll just assume the best case.
-    return Promise.resolve(true);
+async function setConfig(root) {
+  const sharkConfPath =
+    templateType === 'web'
+      ? path.join(root, 'shark-conf.js')
+      : path.join(root, 'web', 'shark-conf.js');
+  if (!fs.existsSync(sharkConfPath)) {
+    console.log();
+    console.log(
+      `${chalk.yellow('[warning]')} Please add shark-conf.js in ${chalk.green(
+        sharkConfPath
+      )} for your product.`
+    );
+    console.log();
+    return;
   }
+  const arr = [
+    'Please enter the groupName in the git repository',
+    'Please enter the productName in the git repository',
+    'The contextPath of the application, default empty string',
+  ];
 
-  return new Promise(resolve => {
-    dns.lookup('registry.yarnpkg.com', err => {
-      let proxy;
-      if (err != null && (proxy = getProxy())) {
-        // If a proxy is defined, we likely can't resolve external hostnames.
-        // Try to resolve the proxy name as an indication of a connection.
-        dns.lookup(url.parse(proxy).hostname, proxyErr => {
-          resolve(proxyErr == null);
-        });
-      } else {
-        resolve(err == null);
-      }
+  // git 仓库中的groupName，需配置
+  const group =
+    (await setConfigHandle(root, sharkConfPath, 'group', arr[0])) || '';
+  // git 仓库中的productName，需配置
+  const product =
+    (await setConfigHandle(root, sharkConfPath, 'product', arr[1])) || '';
+  // 应用的contextPath，需配置，没有填空字符串
+  const contextPath =
+    (await setConfigHandle(root, sharkConfPath, 'contextPath', arr[2])) || '';
+
+  let sharkConf = fs.readFileSync(sharkConfPath, 'utf8');
+  sharkConf = sharkConf
+    .replace(/const group = .*;/, `const group = ${group};`)
+    .replace(/const product = .*;/, `const product = ${product};`)
+    .replace(/const contextPath = .*;/, `const contextPath = ${contextPath};`);
+  fs.writeFileSync(sharkConfPath, sharkConf);
+}
+async function setConfigHandle(root, sharkConfPath, conf, mgs) {
+  try {
+    const answer = await inquirer.prompt({
+      type: 'input',
+      name: conf,
+      message: mgs,
+      default: '',
     });
-  });
+    if (!answer[conf]) {
+      console.log(`You can set the ${conf} in ${chalk.green(sharkConfPath)}.`);
+      console.log();
+    } else {
+      console.log(
+        `You can modify the ${conf} in ${chalk.green(sharkConfPath)}.`
+      );
+      console.log();
+    }
+    return answer[conf];
+  } catch (e) {
+    console.log(e);
+  }
 }
 
-function executeNodeScript({ cwd, args }, data, source) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      [...args, '-e', source, '--', JSON.stringify(data)],
-      { cwd, stdio: 'inherit' }
-    );
-
-    child.on('close', code => {
-      if (code !== 0) {
-        reject({
-          command: `node ${args.join(' ')}`,
-        });
-        return;
-      }
-      resolve();
-    });
+function install(useYarn) {
+  let command;
+  let args;
+  if (useYarn) {
+    command = 'yarn';
+  } else {
+    command = 'npm';
+    args = templateType === 'web' ? ['install'] : ['run', 'install'];
+  }
+  console.log('Installing packages. This might take a couple of minutes.');
+  console.log();
+  const child = spawn(command, args, { stdio: 'inherit' });
+  child.on('close', code => {
+    if (code !== 0) {
+      console.log(
+        `${chalk.green(command)} ${chalk.green(
+          args.join(' ')
+        )} failed, Please install manually`
+      );
+    }
   });
 }

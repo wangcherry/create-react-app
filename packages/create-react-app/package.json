@@ -1,6 +1,6 @@
 {
-  "name": "create-react-app",
-  "version": "3.0.1",
+  "name": "@shark/create-react-app",
+  "version": "0.0.1",
   "keywords": [
     "react"
   ],
