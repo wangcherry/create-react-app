@@ -574,6 +574,10 @@ async function setConfig(root, useYarn) {
     .replace(/\$\{serviceCode\}/g, serviceCode);
   fs.writeFileSync(gitlabCiYmlPath, gitlabCiYmlConf);
 
+  execSync(`git init`);
+  execSync(
+    `git remote add origin git@git.yx.netease.com:${group}/${product}.git`
+  );
   install(useYarn);
 }
 async function setConfigHandle(root, confPath, conf, msg) {
