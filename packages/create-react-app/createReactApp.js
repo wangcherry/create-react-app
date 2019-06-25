@@ -144,8 +144,8 @@ if (program.info) {
         System: ['OS', 'CPU'],
         Binaries: ['Node', 'npm', 'Yarn'],
         Browsers: ['Chrome', 'Edge', 'Internet Explorer', 'Firefox', 'Safari'],
-        npmPackages: ['react', 'react-dom', '@shark/react-scripts'],
-        npmGlobalPackages: ['@shark/create-react-app'],
+        npmPackages: ['react', 'react-dom', '@sharkR/react-scripts'],
+        npmGlobalPackages: ['@sharkR/create-react-app'],
       },
       {
         duplicates: true,
@@ -376,7 +376,7 @@ function checkAppName(appName) {
   }
 
   // TODO: there should be a single place that holds the dependencies
-  const dependencies = ['react', 'react-dom', 'react-scripts'].sort();
+  const dependencies = ['react', 'react-dom', '@sharkR/react-scripts'].sort();
   if (dependencies.indexOf(appName) >= 0) {
     console.error(
       chalk.red(
@@ -599,7 +599,7 @@ async function setConfigHandle(root, confPath, conf, msg) {
 
 function install(useYarn) {
   let command;
-  let args;
+  let args = [];
   if (useYarn) {
     command = 'yarn';
   } else {
@@ -611,8 +611,9 @@ function install(useYarn) {
   const child = spawn(command, args, { stdio: 'inherit' });
   child.on('close', code => {
     if (code !== 0) {
+      console.log();
       console.log(
-        `${chalk.green(command)} ${chalk.green(
+        `${chalk.red(command)} ${chalk.red(
           args.join(' ')
         )} failed, Please install manually`
       );
