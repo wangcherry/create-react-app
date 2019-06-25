@@ -57,9 +57,9 @@ const errorLogFilePatterns = [
 
 // template type
 const templateTypeMap = {
-  full: 'git@git.yx.netease.com:shark/react-template-full.git',
-  web: 'git@git.yx.netease.com:shark/react-tempalte.git',
-  npm: 'git@git.yx.netease.com:shark/react-template-npm.git',
+  full: 'git@git.yx.netease.com:sharkR/react-template-full.git',
+  web: 'git@git.yx.netease.com:sharkR/react-template-web.git',
+  npm: 'git@git.yx.netease.com:sharkR/react-template-npm.git',
 };
 let templateType;
 let templateGit;
