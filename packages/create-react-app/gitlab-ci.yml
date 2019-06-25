@@ -1,0 +1,198 @@
+variables:
+  PRE_CMD: '--projectId=$CI_PROJECT_ID
+    --buildId=$CI_BUILD_ID
+    --buildRef=$CI_BUILD_REF
+    --refName=$CI_BUILD_REF_NAME'
+
+  PUB_CMD: '--projectId=$CI_PROJECT_ID
+    --projectName=$CI_PROJECT_NAME
+    --buildId=$CI_BUILD_ID
+    --buildRef=$CI_BUILD_REF
+    --refName=$CI_BUILD_REF_NAME
+    --commiter=$GITLAB_USER_EMAIL'
+
+  SERVICE_CODE: '${serviceCode}'
+  OPERA_ARGS: '--buildId=$CI_JOB_ID
+            --projectName=$CI_PROJECT_NAME
+            --projectId=$CI_PROJECT_ID
+            --projectNamespace=$CI_PROJECT_NAMESPACE
+            --serviceCode=$SERVICE_CODE
+            --commitId=$CI_COMMIT_SHA
+            --branch=$CI_COMMIT_REF_NAME
+            --pipelineId=$CI_PIPELINE_ID
+            --userName=$GITLAB_USER_NAME
+            --userEmail=$GITLAB_USER_EMAIL'
+
+stages:
+  - install
+  - package
+  - deploy-nos
+  - upload-artifacts # 把打包好的制品上传到 opera 文件服务
+  - deploy
+  - upload-bee
+
+
+cache:
+  paths:
+    - server/node_modules/
+    - web/node_modules/
+
+# 安装node_modules
+install:
+  stage: install
+  script:
+    - pwd
+    - sh scripts/install-ci.sh
+  tags:
+    - docker-runner
+
+# 编译
+package-fed:
+  stage: package
+  script:
+    - pwd
+    - npm run build:test
+    - cd server/dist && zip -r ../../artifacts.zip ./*
+    - cd ../../
+    - pigpre --module=server $PRE_CMD
+  tags:
+    - docker-runner
+  artifacts:
+    paths:
+      - artifacts.zip
+    expire_in: 1d
+  except:
+    - master
+
+# 编译
+package-online-fed:
+  stage: package
+  script:
+    - pwd
+    - npm run build:online
+    - cd server/dist && zip -r ../../artifacts.zip ./*
+    - cd ../../
+    - pigpre --module=server $PRE_CMD
+  tags:
+    - docker-runner
+  artifacts:
+    paths:
+      - artifacts.zip
+    expire_in: 7d
+  only:
+    - master
+
+# 测试服部署nos
+deploy-nos-test:
+  stage: deploy-nos
+  script:
+    - pwd
+    - unzip artifacts.zip -d artifacts
+    - cd artifacts/mimg
+    - path=`pwd`
+    - echo $path
+    - shark-deploy-nos "$path" ${group} ${product} test
+  tags:
+    - docker_nos
+  when: manual
+  except:
+    - master
+
+# 线上服部署nos
+deploy-nos-online:
+  stage: deploy-nos
+  script:
+    - pwd
+    - unzip artifacts.zip -d artifacts
+    - cd artifacts/mimg
+    - path=`pwd`
+    - echo $path
+    - shark-deploy-nos "$path" ${group} ${product} online
+  tags:
+    - docker_nos
+  when: manual
+  only:
+    - master
+
+# 部署测试机
+deploy-test-server:
+  stage: deploy
+  script:
+    - pigpub --module=server $PUB_CMD
+      --deployConfig=deploy/deploy-test.yml
+  tags:
+    - pig2
+  dependencies: []
+  environment: test-server
+  when: manual
+  except:
+    - master
+
+# 部署Main线上机
+deploy-main-online-server:
+  stage: deploy
+  script:
+    - pigpub --module=server $PUB_CMD
+      --deployConfig=deploy/deploy-main-online-server.yml
+  tags:
+    - pig2
+  dependencies: []
+  environment: main-online-server
+  when: manual
+  only:
+    - master
+
+# 部署备用线上机
+deploy-backup-online-server:
+  stage: deploy
+  script:
+    - pigpub --module=server $PUB_CMD
+      --deployConfig=deploy/deploy-backup-online-server.yml
+  tags:
+    - pig2
+  dependencies: []
+  environment: backup-online-server
+  when: manual
+  only:
+    - master
+
+# 上传接口文档至接口管理平台线上服
+upload-bee-online:
+  stage: upload-bee
+  script:
+    - pwd
+    - unzip artifacts.zip -d artifacts
+    - cd artifacts/src/swagger
+    - bee-upload $SERVICE_CODE  $CI_BUILD_REF_NAME
+  tags:
+    - bee-runner
+  when: manual
+
+  # 线上传代码制品
+upload_artifacts-online:
+  stage: upload-artifacts
+  script:
+    - pwd
+    - opera_truck_agent truck $OPERA_ARGS --env=online --artifactPath=artifacts.zip 
+  tags:
+    - opera-runner
+  only:
+    - master
+  when: manual
+  dependencies:
+    - package-fed
+
+# 测试服上传代码制品
+upload_artifacts-test:
+  stage: upload-artifacts
+  script:
+    - pwd
+    - opera_truck_agent truck $OPERA_ARGS --env=test --artifactPath=artifacts.zip
+  tags:
+    - opera-runner
+  except:
+    - master
+  when: manual
+  dependencies:
+    - package-fed
+

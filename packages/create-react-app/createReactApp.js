@@ -69,7 +69,7 @@ let projectName;
 const program = new commander.Command(packageJson.name)
   .version(packageJson.version)
   .arguments('<project-directory>')
-  .usage(`${chalk.green('<project-directory>')} [options] [value ...]`)
+  .usage(`${chalk.green('<project-directory>')} [options]`)
   .action(name => {
     projectName = name;
   })
@@ -312,8 +312,7 @@ function createApp(name, verbose, version, useNpm, usePnp) {
   }
 
   execSync(`rm -rf .git`);
-  setConfig(root);
-  install(useYarn);
+  setConfig(root, useYarn);
 }
 
 function shouldUseYarn() {
@@ -519,25 +518,17 @@ function checkThatNpmCanReadCwd() {
   return false;
 }
 
-async function setConfig(root) {
+async function setConfig(root, useYarn) {
   const sharkConfPath =
     templateType === 'web'
       ? path.join(root, 'shark-conf.js')
       : path.join(root, 'web', 'shark-conf.js');
-  if (!fs.existsSync(sharkConfPath)) {
-    console.log();
-    console.log(
-      `${chalk.yellow('[warning]')} Please add shark-conf.js in ${chalk.green(
-        sharkConfPath
-      )} for your product.`
-    );
-    console.log();
-    return;
-  }
+  const gitlabCiYmlPath = path.join(root, '.gitlab-ci.yml');
   const arr = [
     'Please enter the groupName in the git repository',
     'Please enter the productName in the git repository',
-    'The contextPath of the application, default empty string',
+    'Please enter the contextPath of the application, default empty string',
+    'Please enter the serviceCode of the application, default empty string',
   ];
 
   // git 仓库中的groupName，需配置
@@ -550,28 +541,54 @@ async function setConfig(root) {
   const contextPath =
     (await setConfigHandle(root, sharkConfPath, 'contextPath', arr[2])) || '';
 
-  let sharkConf = fs.readFileSync(sharkConfPath, 'utf8');
+  let sharkConf = fs.readFileSync(require.resolve('./shark-conf.js'), 'utf8');
   sharkConf = sharkConf
-    .replace(/const group = .*;/, `const group = ${group};`)
-    .replace(/const product = .*;/, `const product = ${product};`)
-    .replace(/const contextPath = .*;/, `const contextPath = ${contextPath};`);
+    .replace(
+      /const group = .*;/,
+      group ? `const group = '${group}';` : `const group = '';`
+    )
+    .replace(
+      /const product = .*;/,
+      product ? `const product = '${product}';` : `const product = '';`
+    )
+    .replace(
+      /const contextPath = .*;/,
+      contextPath
+        ? `const contextPath = '${contextPath}';`
+        : `const contextPath = '';`
+    );
   fs.writeFileSync(sharkConfPath, sharkConf);
+
+  // 应用的 serviceCode，需配置，没有填空字符串
+  const serviceCode =
+    (await setConfigHandle(root, gitlabCiYmlPath, 'SERVICE_CODE', arr[3])) ||
+    '';
+
+  let gitlabCiYmlConf = fs.readFileSync(
+    require.resolve('./gitlab-ci.yml'),
+    'utf8'
+  );
+  gitlabCiYmlConf = gitlabCiYmlConf
+    .replace(/\$\{group\}/g, group)
+    .replace(/\$\{product\}/g, product)
+    .replace(/\$\{serviceCode\}/g, serviceCode);
+  fs.writeFileSync(gitlabCiYmlPath, gitlabCiYmlConf);
+
+  install(useYarn);
 }
-async function setConfigHandle(root, sharkConfPath, conf, mgs) {
+async function setConfigHandle(root, confPath, conf, msg) {
   try {
     const answer = await inquirer.prompt({
       type: 'input',
       name: conf,
-      message: mgs,
+      message: msg,
       default: '',
     });
     if (!answer[conf]) {
-      console.log(`You can set the ${conf} in ${chalk.green(sharkConfPath)}.`);
+      console.log(`You can set the ${conf} in ${chalk.green(confPath)}.`);
       console.log();
     } else {
-      console.log(
-        `You can modify the ${conf} in ${chalk.green(sharkConfPath)}.`
-      );
+      console.log(`You can modify the ${conf} in ${chalk.green(confPath)}.`);
       console.log();
     }
     return answer[conf];

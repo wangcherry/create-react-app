@@ -20,7 +20,9 @@
   "files": [
     "index.js",
     "createReactApp.js",
-    "yarn.lock.cached"
+    "yarn.lock.cached",
+    "gitlab-ci.yml",
+    "shark-conf.js"
   ],
   "bin": {
     "create-react-app": "./index.js"
