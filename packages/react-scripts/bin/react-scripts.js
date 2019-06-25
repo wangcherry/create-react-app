@@ -29,7 +29,10 @@ const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 const argv = require('yargs').argv;
 if (script === 'build') {
   const target = argv.target;
-  if (target === 'test' || target === 'online' || target === 'dev') {
+  if (!target) {
+    process.env.PUBLIC_URL =
+      require(paths.appConfJs).mimgURLPrefix['dev'] || '';
+  } else if (target === 'test' || target === 'online' || target === 'dev') {
     process.env.PUBLIC_URL =
       require(paths.appConfJs).mimgURLPrefix[target] || '';
   } else {
