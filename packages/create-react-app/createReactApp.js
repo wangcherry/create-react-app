@@ -64,27 +64,32 @@ const templateTypeMap = {
 let templateType;
 let templateGit;
 
+const cmdList = ['init'];
+let cmdName;
 let projectName;
 
 const program = new commander.Command(packageJson.name)
   .version(packageJson.version)
-  .arguments('<project-directory>')
-  .usage(`${chalk.green('<project-directory>')} [options]`)
-  .action(name => {
-    projectName = name;
-  })
-  .option('--type <type>', 'set template type', 'full')
-  .option('--verbose', 'print additional logs')
-  .option('--info', 'print environment debug info')
-  .option(
-    '--scripts-version <alternative-package>',
-    'use a non-standard version of react-scripts'
+  .arguments('<cmd> [project-directory]')
+  .usage(
+    `${chalk.green('<cmd>')} ${chalk.green('[project-directory]')} [options]`
   )
+  .action((cmd, dir) => {
+    cmdName = cmd;
+    projectName = dir;
+  })
+  .option('-t, --type <type>', 'set template type', 'full')
+  .option('-i, --info', 'print environment debug info')
+  .option('--verbose', 'print additional logs')
   .option('--use-npm')
   .option('--use-pnp')
   .allowUnknownOption()
-  .on('--help', () => {
-    console.log(`    Only ${chalk.green('<project-directory>')} is required.`);
+  .on('-h, --help', () => {
+    console.log(`    Only ${chalk.green('<cmd>')} is required.`);
+    console.log();
+    console.log(
+      `    If init react app ${chalk.green('[project-directory]')} is required.`
+    );
     console.log();
     console.log(`    A template type ${chalk.cyan('--type')} can be set:`);
     console.log(
@@ -93,44 +98,6 @@ const program = new commander.Command(packageJson.name)
     console.log(`      - ${chalk.green('web')}: only web template`);
     console.log(
       `      - ${chalk.green('npm')}: include server & web for package`
-    );
-    console.log();
-    console.log(
-      `    A custom ${chalk.cyan('--scripts-version')} can be one of:`
-    );
-    console.log(`      - a specific npm version: ${chalk.green('0.8.2')}`);
-    console.log(`      - a specific npm tag: ${chalk.green('@next')}`);
-    console.log(
-      `      - a custom fork published on npm: ${chalk.green(
-        'my-react-scripts'
-      )}`
-    );
-    console.log(
-      `      - a local path relative to the current working directory: ${chalk.green(
-        'file:../my-react-scripts'
-      )}`
-    );
-    console.log(
-      `      - a .tgz archive: ${chalk.green(
-        'https://mysite.com/my-react-scripts-0.8.2.tgz'
-      )}`
-    );
-    console.log(
-      `      - a .tar.gz archive: ${chalk.green(
-        'https://mysite.com/my-react-scripts-0.8.2.tar.gz'
-      )}`
-    );
-    console.log(
-      `    It is not needed unless you specifically want to use a fork.`
-    );
-    console.log();
-    console.log(
-      `    If you have any problems, do not hesitate to file an issue:`
-    );
-    console.log(
-      `      ${chalk.cyan(
-        'https://github.com/facebook/create-react-app/issues/new'
-      )}`
     );
     console.log();
   })
@@ -145,7 +112,7 @@ if (program.info) {
         Binaries: ['Node', 'npm', 'Yarn'],
         Browsers: ['Chrome', 'Edge', 'Internet Explorer', 'Firefox', 'Safari'],
         npmPackages: ['react', 'react-dom', '@sharkR/react-scripts'],
-        npmGlobalPackages: ['@sharkR/create-react-app'],
+        npmGlobalPackages: ['@sharkR/cli'],
       },
       {
         duplicates: true,
@@ -155,14 +122,37 @@ if (program.info) {
     .then(console.log);
 }
 
-if (typeof projectName === 'undefined') {
-  console.error('Please specify the project directory:');
+if (typeof cmdName === 'undefined' || cmdList.indexOf(cmdName) === -1) {
+  console.error('Please enter the correct command:');
   console.log(
-    `  ${chalk.cyan(program.name())} ${chalk.green('<project-directory>')}`
+    `  ${chalk.cyan(program.name())} ${chalk.green(
+      '<cmd> [project-directory]'
+    )}`
   );
   console.log();
   console.log('For example:');
-  console.log(`  ${chalk.cyan(program.name())} ${chalk.green('my-react-app')}`);
+  console.log(
+    `  ${chalk.cyan(program.name())} ${chalk.green('init my-react-app')}`
+  );
+  console.log();
+  console.log(
+    `Run ${chalk.cyan(`${program.name()} --help`)} to see all options.`
+  );
+  process.exit(1);
+}
+
+if (typeof projectName === 'undefined') {
+  console.error('Please specify the project directory:');
+  console.log(
+    `  ${chalk.cyan(program.name())} ${chalk.green(
+      '<cmd> [project-directory]'
+    )}`
+  );
+  console.log();
+  console.log('For example:');
+  console.log(
+    `  ${chalk.cyan(program.name())} ${chalk.green('init my-react-app')}`
+  );
   console.log();
   console.log(
     `Run ${chalk.cyan(`${program.name()} --help`)} to see all options.`
@@ -183,13 +173,13 @@ if (program.type) {
     console.error('Please set the correct template type (full | web | npm) : ');
     console.log(
       `  ${chalk.cyan(program.name())} ${chalk.green(
-        '<project-directory>'
+        '<cmd> [project-directory]'
       )} ${chalk.green('[options]')}`
     );
     console.log();
     console.log('For example:');
     console.log(
-      `  ${chalk.cyan(program.name())} 'my-react-app' ${chalk.green(
+      `  ${chalk.cyan(program.name())} 'init my-react-app' ${chalk.green(
         '--type=full'
       )}`
     );
@@ -206,7 +196,7 @@ if (program.type) {
   console.log('Equal:');
   console.log(
     `  ${chalk.cyan(program.name())} ${chalk.green(
-      '<project-directory>'
+      '<cmd> [project-directory]'
     )} --type=${templateType}`
   );
 }

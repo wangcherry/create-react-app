@@ -1,5 +1,5 @@
 {
-  "name": "@sharkR/create-react-app",
+  "name": "@sharkR/cli",
   "version": "0.0.1",
   "keywords": [
     "react"
@@ -22,10 +22,11 @@
     "createReactApp.js",
     "yarn.lock.cached",
     "gitlab-ci.yml",
-    "shark-conf.js"
+    "shark-conf.js",
+    "shark-cli.json"
   ],
   "bin": {
-    "create-react-app": "./index.js"
+    "sr": "./index.js"
   },
   "dependencies": {
     "chalk": "2.4.2",
