@@ -111,8 +111,8 @@ if (program.info) {
         System: ['OS', 'CPU'],
         Binaries: ['Node', 'npm', 'Yarn'],
         Browsers: ['Chrome', 'Edge', 'Internet Explorer', 'Firefox', 'Safari'],
-        npmPackages: ['react', 'react-dom', '@sharkR/react-scripts'],
-        npmGlobalPackages: ['@sharkR/cli'],
+        npmPackages: ['react', 'react-dom', '@sharkr/react-scripts'],
+        npmGlobalPackages: ['@sharkr/cli'],
       },
       {
         duplicates: true,
@@ -366,7 +366,7 @@ function checkAppName(appName) {
   }
 
   // TODO: there should be a single place that holds the dependencies
-  const dependencies = ['react', 'react-dom', '@sharkR/react-scripts'].sort();
+  const dependencies = ['react', 'react-dom', '@sharkr/react-scripts'].sort();
   if (dependencies.indexOf(appName) >= 0) {
     console.error(
       chalk.red(
