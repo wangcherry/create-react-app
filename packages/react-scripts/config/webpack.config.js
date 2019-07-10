@@ -53,6 +53,23 @@ const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
 
+// change jsonpFunction
+const sharkConf = require(paths.appConfJs);
+let webpackJsonp;
+if (sharkConf.group && sharkConf.product) {
+  webpackJsonp = `webpackJsonp_${camelize(sharkConf.group)}_${camelize(
+    sharkConf.product
+  )}`;
+} else {
+  webpackJsonp = 'webpackJsonp';
+}
+// 中划线转驼峰
+function camelize(str) {
+  return (str + '').replace(/-\D/g, function(match) {
+    return match.charAt(1).toUpperCase();
+  });
+}
+
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function(webpackEnv) {
@@ -158,6 +175,8 @@ module.exports = function(webpackEnv) {
       // changing JS code would still trigger a refresh.
     ].filter(Boolean),
     output: {
+      // JSONP异步加载资源时的回调函数名称
+      jsonpFunction: webpackJsonp,
       // The build folder.
       path: isEnvProduction ? paths.buildClient : undefined,
       // Add /* filename */ comments to generated require()s in the output.
