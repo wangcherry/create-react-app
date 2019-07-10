@@ -57,7 +57,8 @@ if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
 }
 
 // Tools like Cloud9 rely on this.
-const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
+const DEFAULT_PORT =
+  parseInt(process.env.PORT, 10) || parseInt(require(paths.appConfJs).port, 10);
 const HOST = process.env.HOST || 'local.yx.mail.netease.com';
 
 if (process.env.HOST) {

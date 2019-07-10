@@ -97,8 +97,9 @@ checkBrowsers(paths.appPath, isInteractive)
         );
       } else {
         console.log(chalk.green('Compiled successfully.\n'));
-        copyFolder();
       }
+
+      copyFolder();
 
       console.log('File sizes after gzip:\n');
       printFileSizesAfterBuild(
@@ -206,6 +207,8 @@ function copyPublicFolder() {
   //   filter: file => file !== paths.appHtml,
   // });
 }
+
+// @sharkr
 function copyFolder() {
   if (fs.existsSync(path.join(paths.buildClient, 'js'))) {
     fs.copySync(
@@ -219,22 +222,16 @@ function copyFolder() {
       path.join(paths.buildStatics, 'css')
     );
   }
-  if (fs.existsSync(path.join(paths.buildClient, 'img'))) {
+  if (fs.existsSync(path.join(paths.buildClient, 'media'))) {
     fs.copySync(
-      path.join(paths.buildClient, 'img'),
-      path.join(paths.buildStatics, 'img')
+      path.join(paths.buildClient, 'media'),
+      path.join(paths.buildStatics, 'media')
     );
   }
   if (fs.existsSync(path.join(paths.appPublic, 'favicon.ico'))) {
     fs.copySync(
       path.join(paths.appPublic, 'favicon.ico'),
       path.join(paths.buildWebapp, 'favicon.ico')
-    );
-  }
-  if (fs.existsSync(path.join(paths.appPublic, 'manifest.json'))) {
-    fs.copySync(
-      path.join(paths.appPublic, 'manifest.json'),
-      path.join(paths.buildWebapp, 'manifest.json')
     );
   }
   if (fs.existsSync(path.join(paths.buildClient, 'index.html'))) {

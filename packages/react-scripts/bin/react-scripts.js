@@ -26,6 +26,7 @@ const scriptIndex = args.findIndex(
 const script = scriptIndex === -1 ? args[0] : args[scriptIndex];
 const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 
+// @sharkr
 const argv = require('yargs').argv;
 if (script === 'build') {
   const target = argv.target;
