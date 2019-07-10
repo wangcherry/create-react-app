@@ -53,6 +53,7 @@ const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
 
+// @remove-on-eject-begin
 // change jsonpFunction
 const sharkConf = require(paths.appConfJs);
 let webpackJsonp;
@@ -69,6 +70,7 @@ function camelize(str) {
     return match.charAt(1).toUpperCase();
   });
 }
+// @remove-on-eject-end
 
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
@@ -175,8 +177,10 @@ module.exports = function(webpackEnv) {
       // changing JS code would still trigger a refresh.
     ].filter(Boolean),
     output: {
+      // @remove-on-eject-begin
       // JSONP异步加载资源时的回调函数名称
       jsonpFunction: webpackJsonp,
+      // @remove-on-eject-end
       // The build folder.
       path: isEnvProduction ? paths.buildClient : undefined,
       // Add /* filename */ comments to generated require()s in the output.
@@ -408,6 +412,16 @@ module.exports = function(webpackEnv) {
                       },
                     },
                   ],
+                  // @remove-on-eject-begin
+                  [
+                    'import',
+                    {
+                      libraryName: 'antd',
+                      libraryDirectory: 'es',
+                      style: 'css',
+                    },
+                  ],
+                  // @remove-on-eject-end
                 ],
                 // This is a feature of `babel-loader` for webpack (not Babel itself).
                 // It enables caching results in ./node_modules/.cache/babel-loader/
