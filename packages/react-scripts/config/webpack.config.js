@@ -66,9 +66,7 @@ if (sharkConf.group && sharkConf.product) {
 }
 // 中划线转驼峰
 function camelize(str) {
-  return (str + '').replace(/-\D/g, function(match) {
-    return match.charAt(1).toUpperCase();
-  });
+  return str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''));
 }
 // @remove-on-eject-end
 
